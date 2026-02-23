@@ -205,12 +205,32 @@ export default function App() {
   useEffect(() => {
     if (activeBrand) {
       setScanning(true);
-      setTimeout(() => {
-        setData(generateData(activeBrand));
-        setScanning(false);
-      }, 1200);
+      loadBrandData(activeBrand);
     }
   }, [activeBrand]);
+
+  async function loadBrandData(brand) {
+    // Start with generated prompt data immediately
+    const generated = generateData(brand);
+    setData(generated);
+
+    // Then fetch real articles from the API
+    try {
+      const apiBase = import.meta.env.VITE_API_URL || "http://localhost:3001";
+      const res = await fetch(`${apiBase}/api/articles?brand=${encodeURIComponent(brand)}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.articles && json.articles.length > 0) {
+          setData(prev => ({ ...prev, articles: json.articles }));
+        }
+      }
+    } catch (err) {
+      // API unavailable — keep generated articles as fallback
+      console.warn("API not reachable, using demo article data:", err.message);
+    } finally {
+      setScanning(false);
+    }
+  }
 
   function addBrand() {
     const name = inputValue.trim();
@@ -413,7 +433,7 @@ export default function App() {
                     </h1>
                     <div style={{ color: "#64748b", fontSize: 13 }}>AI visibility analysis · {data.category} category</div>
                   </div>
-                  <button onClick={() => { setScanning(true); setTimeout(() => { setData(generateData(activeBrand)); setScanning(false); }, 1000); }}
+                  <button onClick={() => { setScanning(true); loadBrandData(activeBrand); }}
                     style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.3)", borderRadius: 8, padding: "8px 14px", cursor: "pointer", color: "#6366f1", fontSize: 13, fontWeight: 500 }}>
                     <RefreshCw size={13} /> Rescan
                   </button>
