@@ -19,4 +19,4 @@ RUN npm install -g serve
 
 # Expose port and start serving
 EXPOSE 8080
-CMD serve -s dist -l $PORT
+CMD ["sh", "-c", "serve -s dist -l ${PORT:-8080}"]
