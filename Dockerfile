@@ -1,22 +1,14 @@
-FROM node:20-slim
-
+# Build stage
+FROM node:20-slim AS builder
 WORKDIR /app
-
-# Copy package files first (for better layer caching)
 COPY package*.json ./
-
-# Install ALL dependencies including devDependencies (vite is a devDep)
 RUN npm install
-
-# Copy the rest of the source code
 COPY . .
-
-# Build the React/Vite app into the dist/ folder
 RUN npm run build
 
-# Use serve to host the static files
-RUN npm install -g serve@13
-
-# Expose port and start serving
+# Serve stage
+FROM nginx:alpine
+COPY --from=builder /app/dist /usr/share/nginx/html
+RUN printf 'server {\n    listen 8080;\n    root /usr/share/nginx/html;\n    index index.html;\n    location / {\n        try_files $uri $uri/ /index.html;\n    }\n}\n' > /etc/nginx/conf.d/default.conf
 EXPOSE 8080
-CMD ["serve", "-s", "dist", "-l", "8080"]
+CMD ["nginx", "-g", "daemon off;"]
