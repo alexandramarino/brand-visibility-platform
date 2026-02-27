@@ -226,7 +226,7 @@ export default function App() {
   async function loadBrandData(brand) {
     // Show generated data immediately while real data loads
     const generated = generateData(brand);
-    setData(generated);
+    setData({ ...generated, prompts: [] });
     // Fetch real articles AND real prompts from the API in parallel
     try {
       const apiBase = import.meta.env.VITE_API_URL || "https://brand-visibility-api-production.up.railway.app";
