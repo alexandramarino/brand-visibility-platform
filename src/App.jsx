@@ -216,7 +216,7 @@ export default function App() {
 
     // Then fetch real articles from the API
     try {
-      const apiBase = import.meta.env.VITE_API_URL || "http://localhost:3001";
+      const apiBase = import.meta.env.VITE_API_URL || "https://brand-visibility-api-production.up.railway.app";
       const res = await fetch(`${apiBase}/api/articles?brand=${encodeURIComponent(brand)}`);
       if (res.ok) {
         const json = await res.json();
