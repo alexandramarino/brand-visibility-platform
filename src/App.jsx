@@ -210,23 +210,30 @@ export default function App() {
   }, [activeBrand]);
 
   async function loadBrandData(brand) {
-    // Start with generated prompt data immediately
+    // Show generated data immediately while real data loads
     const generated = generateData(brand);
     setData(generated);
-
-    // Then fetch real articles from the API
+    // Fetch real articles AND real prompts from the API in parallel
     try {
       const apiBase = import.meta.env.VITE_API_URL || "https://brand-visibility-api-production.up.railway.app";
-      const res = await fetch(`${apiBase}/api/articles?brand=${encodeURIComponent(brand)}`);
-      if (res.ok) {
-        const json = await res.json();
+      const [articlesRes, promptsRes] = await Promise.allSettled([
+        fetch(`${apiBase}/api/articles?brand=${encodeURIComponent(brand)}`),
+        fetch(`${apiBase}/api/prompts?brand=${encodeURIComponent(brand)}`),
+      ]);
+      if (articlesRes.status === "fulfilled" && articlesRes.value.ok) {
+        const json = await articlesRes.value.json();
         if (json.articles && json.articles.length > 0) {
           setData(prev => ({ ...prev, articles: json.articles }));
         }
       }
+      if (promptsRes.status === "fulfilled" && promptsRes.value.ok) {
+        const json = await promptsRes.value.json();
+        if (json.prompts && json.prompts.length > 0) {
+          setData(prev => ({ ...prev, prompts: json.prompts }));
+        }
+      }
     } catch (err) {
-      // API unavailable — keep generated articles as fallback
-      console.warn("API not reachable, using demo article data:", err.message);
+      console.warn("API not reachable, using demo data:", err.message);
     } finally {
       setScanning(false);
     }
