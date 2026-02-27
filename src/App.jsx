@@ -189,6 +189,20 @@ function formatNumber(n) {
 // ─────────────────────────────────────────────────────────
 // MAIN APP
 // ─────────────────────────────────────────────────────────
+function extractKeywords(text, brand) {
+  const stops = new Set(['what','are','the','is','do','how','can','which','where','when','who','was','were','will','would','should','could','does','did','for','with','from','that','this','have','has','had','a','an','in','of','to','and','or','but','at','by','up','on','if','no','so','i','my','after','before','about','some','its','it','use','used','me','you','your']);
+  const brandWords = brand.toLowerCase().split(/\s+/);
+  return text.toLowerCase().replace(/[^a-z0-9\s]/g,'').split(/\s+/).filter(w => w.length > 2 && !stops.has(w) && !brandWords.includes(w));
+}
+function findCoverage(promptText, articles, brand) {
+  const kws = extractKeywords(promptText, brand);
+  if (!kws.length) return {covered: false, count: 0};
+  const matches = (articles||[]).filter(a => {
+    const txt = ((a.title||'') + ' ' + (a.snippet||'')).toLowerCase();
+    return kws.some(k => txt.includes(k));
+  });
+  return {covered: matches.length > 0, count: matches.length};
+}
 export default function App() {
   const [brands, setBrands] = useState([]);
   const [activeBrand, setActiveBrand] = useState(null);
@@ -504,12 +518,13 @@ export default function App() {
 
                   <div style={{ background: "#13131f", border: "1px solid #1e1e2e", borderRadius: 12, overflow: "hidden" }}>
                     {/* Table header */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 140px 100px 180px 100px", gap: 16, padding: "12px 20px", borderBottom: "1px solid #1e1e2e", fontSize: 11, color: "#64748b", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 140px 100px 180px 100px 130px", gap: 16, padding: "12px 20px", borderBottom: "1px solid #1e1e2e", fontSize: 11, color: "#64748b", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
                       <div>Prompt</div>
                       <div>Monthly Volume</div>
                       <div>Status</div>
                       <div>AI Engines</div>
                       <div>Position</div>
+                      <div>Coverage</div>
                     </div>
 
                     {data.prompts
@@ -518,7 +533,7 @@ export default function App() {
                         <div key={p.id}>
                           <div className="row-hover" onClick={() => setExpandedPrompt(expandedPrompt === p.id ? null : p.id)}
                             style={{
-                              display: "grid", gridTemplateColumns: "1fr 140px 100px 180px 100px", gap: 16,
+                              display: "grid", gridTemplateColumns: "1fr 140px 100px 180px 100px 130px", gap: 16,
                               padding: "14px 20px", borderBottom: "1px solid #1a1a2a", cursor: "pointer",
                               background: expandedPrompt === p.id ? "rgba(99,102,241,0.04)" : "transparent",
                               transition: "background 0.15s",
@@ -556,6 +571,25 @@ export default function App() {
                               )}
                               {expandedPrompt === p.id ? <ChevronUp size={14} color="#4b5563" /> : <ChevronDown size={14} color="#4b5563" />}
                             </div>
+                          {/* Coverage */}
+                          {(() => {
+                            const cov = findCoverage(p.prompt, data.articles, activeBrand);
+                            if (cov.covered) return (
+                              <div style={{ display: "flex", alignItems: "center" }}>
+                                <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 99, background: "rgba(16,185,129,0.1)", color: "#10b981" }}>
+                                  ✓ {cov.count} article{cov.count > 1 ? 's' : ''}
+                                </span>
+                              </div>
+                            );
+                            if (!p.mentioned) return (
+                              <div style={{ display: "flex", alignItems: "center" }}>
+                                <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 99, background: "rgba(245,158,11,0.1)", color: "#f59e0b" }}>
+                                  ⚠ Gap
+                                </span>
+                              </div>
+                            );
+                            return <div style={{ display: "flex", alignItems: "center" }}><span style={{ fontSize: 11, color: "#4b5563" }}>—</span></div>;
+                          })()}
                           </div>
 
                           {/* Expanded row */}
