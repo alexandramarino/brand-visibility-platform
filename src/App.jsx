@@ -201,7 +201,7 @@ function findCoverage(promptText, articles, brand) {
     const txt = ((a.title||'') + ' ' + (a.snippet||'')).toLowerCase();
     return kws.some(k => txt.includes(k));
   });
-  return {covered: matches.length > 0, count: matches.length};
+  return {covered: matches.length > 0, count: matches.length, articles: matches};
 }
 export default function App() {
   const [brands, setBrands] = useState([]);
@@ -214,6 +214,7 @@ export default function App() {
   const [filterType, setFilterType] = useState("all");
   const [filterMentioned, setFilterMentioned] = useState("all");
   const [expandedPrompt, setExpandedPrompt] = useState(null);
+  const [expandedCoverage, setExpandedCoverage] = useState(null);
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -574,21 +575,37 @@ export default function App() {
                           {/* Coverage */}
                           {(() => {
                             const cov = findCoverage(p.prompt, data.articles, activeBrand);
-                            if (cov.covered) return (
-                              <div style={{ display: "flex", alignItems: "center" }}>
-                                <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 99, background: "rgba(16,185,129,0.1)", color: "#10b981" }}>
-                                  ✓ {cov.count} article{cov.count > 1 ? 's' : ''}
-                                </span>
+                            const isOpen = expandedCoverage === p.id;
+                            return (
+                              <div style={{ position: "relative" }}>
+                                {cov.covered ? (
+                                  <span
+                                    onClick={() => setExpandedCoverage(isOpen ? null : p.id)}
+                                    style={{ fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 99, background: "rgba(16,185,129,0.1)", color: "#10b981", cursor: "pointer", userSelect: "none" }}
+                                  >
+                                    ✓ {cov.count} article{cov.count > 1 ? 's' : ''}
+                                  </span>
+                                ) : !p.mentioned ? (
+                                  <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 99, background: "rgba(245,158,11,0.1)", color: "#f59e0b" }}>⚠ Gap</span>
+                                ) : (
+                                  <span style={{ fontSize: 11, color: "#4b5563" }}>—</span>
+                                )}
+                                {isOpen && cov.articles && cov.articles.length > 0 && (
+                                  <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 100, background: "#1a1d2e", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "6px 0", minWidth: 280, maxWidth: 380, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
+                                    <div style={{ fontSize: 10, fontWeight: 700, color: "#6b7280", padding: "4px 12px 6px", letterSpacing: "0.05em", textTransform: "uppercase" }}>Matching Articles</div>
+                                    {cov.articles.map((a, ai) => (
+                                      <a key={ai} href={a.url} target="_blank" rel="noopener noreferrer"
+                                        style={{ display: "block", padding: "7px 12px", color: "#e2e8f0", textDecoration: "none", borderTop: ai > 0 ? "1px solid rgba(255,255,255,0.05)" : "none" }}
+                                        onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}
+                                        onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                                        <div style={{ fontSize: 12, fontWeight: 500, lineHeight: 1.3 }}>{a.title}</div>
+                                        <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>{a.publisher || a.domain}</div>
+                                      </a>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             );
-                            if (!p.mentioned) return (
-                              <div style={{ display: "flex", alignItems: "center" }}>
-                                <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 99, background: "rgba(245,158,11,0.1)", color: "#f59e0b" }}>
-                                  ⚠ Gap
-                                </span>
-                              </div>
-                            );
-                            return <div style={{ display: "flex", alignItems: "center" }}><span style={{ fontSize: 11, color: "#4b5563" }}>—</span></div>;
                           })()}
                           </div>
 
