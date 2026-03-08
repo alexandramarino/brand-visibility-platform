@@ -229,6 +229,7 @@ export default function App() {
   }, [activeBrand]);
 
   async function loadCategoryCoverage(brand) {
+    const apiBase = import.meta.env.VITE_API_URL || "https://brand-visibility-api-production.up.railway.app";
     setCategoryLoading(true);
     setCategoryError(null);
     setCategoryCoverage(null);
