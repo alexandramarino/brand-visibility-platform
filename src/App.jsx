@@ -215,6 +215,10 @@ export default function App() {
   const [filterMentioned, setFilterMentioned] = useState("all");
   const [expandedPrompt, setExpandedPrompt] = useState(null);
   const [expandedCoverage, setExpandedCoverage] = useState(null);
+  const [categoryCoverage, setCategoryCoverage] = useState(null);
+  const [categoryLoading, setCategoryLoading] = useState(false);
+  const [categoryError, setCategoryError] = useState(null);
+  const [expandedCatIdx, setExpandedCatIdx] = useState(0);
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -224,7 +228,26 @@ export default function App() {
     }
   }, [activeBrand]);
 
+  async function loadCategoryCoverage(brand) {
+    setCategoryLoading(true);
+    setCategoryError(null);
+    setCategoryCoverage(null);
+    try {
+      const url = apiBase + '/api/category-coverage' + '?brand=' + encodeURIComponent(brand);
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setCategoryCoverage(data);
+      setExpandedCatIdx(0);
+    } catch(e) {
+      setCategoryError(e.message);
+    } finally {
+      setCategoryLoading(false);
+    }
+  }
+
   async function loadBrandData(brand) {
+    setCategoryCoverage(null);
     // Show generated data immediately while real data loads
     const generated = generateData(brand);
     setData({ ...generated, prompts: [] });
@@ -484,8 +507,9 @@ export default function App() {
                   { id: "prompts", label: "AI Prompts", icon: <Zap size={14} />, count: data.prompts.length },
                   { id: "articles", label: "Editorial Articles", icon: <FileText size={14} />, count: data.articles.length },
                   { id: "trends", label: "Trends", icon: <TrendingUp size={14} /> },
+                  { id: "category", label: "Category Coverage", icon: <BarChart2 size={14} /> },
                 ].map(t => (
-                  <button key={t.id} className="tab-btn" onClick={() => setActiveTab(t.id)}
+                  <button key={t.id} className="tab-btn" onClick={() => { setActiveTab(t.id); if (t.id === "category" && !categoryCoverage && !categoryLoading) { loadCategoryCoverage(activeBrand); } }}
                     style={{
                       padding: "12px 20px", borderBottom: `2px solid ${activeTab === t.id ? "#6366f1" : "transparent"}`,
                       color: activeTab === t.id ? "#6366f1" : "#64748b", fontWeight: activeTab === t.id ? 600 : 400,
@@ -777,6 +801,81 @@ export default function App() {
                   </div>
                 </div>
               )}
+            {activeTab === "category" && (
+              <div style={{ padding: "24px" }}>
+                {categoryLoading && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px", padding: "40px 20px" }}>
+                    <div style={{ fontSize: "14px", color: "#6b7280" }}>⏳ <strong>Step 1:</strong> Asking AI to identify product categories for {activeBrand}...</div>
+                    <div style={{ fontSize: "14px", color: "#6b7280" }}>⏳ <strong>Step 2:</strong> Generating top Google search terms per category...</div>
+                    <div style={{ fontSize: "14px", color: "#6b7280" }}>⏳ <strong>Step 3:</strong> Fetching editorial articles for each search term...</div>
+                  </div>
+                )}
+                {categoryError && (
+                  <div style={{ color: "#ef4444", padding: "16px", background: "#fef2f2", borderRadius: "8px" }}>Error: {categoryError}</div>
+                )}
+                {categoryCoverage && !categoryLoading && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+                    <div style={{ background: "#f9fafb", borderRadius: "12px", padding: "20px" }}>
+                      <div style={{ fontSize: "13px", fontWeight: "600", color: "#374151", marginBottom: "12px" }}>Step 1 — AI identified {categoryCoverage.categories.length} product categories for {categoryCoverage.brand}</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                        {categoryCoverage.categories.map((cat, i) => (
+                          <span key={i} onClick={() => setExpandedCatIdx(i)} style={{ padding: "6px 14px", borderRadius: "20px", fontSize: "13px", fontWeight: "500", cursor: "pointer", background: expandedCatIdx === i ? "#6366f1" : "#e0e7ff", color: expandedCatIdx === i ? "#fff" : "#4338ca" }}>{cat.name}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <div style={{ background: "#f9fafb", borderRadius: "12px", padding: "20px" }}>
+                      <div style={{ fontSize: "13px", fontWeight: "600", color: "#374151", marginBottom: "12px" }}>Step 2 — Top Google search terms per category</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "12px" }}>
+                        {categoryCoverage.categories.map((cat, i) => (
+                          <div key={i} style={{ background: "#fff", borderRadius: "8px", padding: "14px", border: "1px solid #e5e7eb" }}>
+                            <div style={{ fontSize: "12px", fontWeight: "700", color: "#6366f1", marginBottom: "8px", textTransform: "uppercase" }}>{cat.name}</div>
+                            {cat.searchTerms.map((st, j) => (
+                              <div key={j} style={{ fontSize: "12px", color: "#6b7280", padding: "3px 0", borderBottom: j < cat.searchTerms.length - 1 ? "1px solid #f3f4f6" : "none" }}>• {st.term}</div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div style={{ background: "#f9fafb", borderRadius: "12px", padding: "20px" }}>
+                      <div style={{ fontSize: "13px", fontWeight: "600", color: "#374151", marginBottom: "12px" }}>Step 3 — Editorial articles ({categoryCoverage.total} total) — {categoryCoverage.categories[expandedCatIdx]?.name}</div>
+                      <div style={{ display: "flex", gap: "6px", marginBottom: "16px", flexWrap: "wrap" }}>
+                        {categoryCoverage.categories.map((cat, i) => (
+                          <button key={i} onClick={() => setExpandedCatIdx(i)} style={{ padding: "5px 12px", borderRadius: "6px", fontSize: "12px", fontWeight: "500", border: "1px solid", cursor: "pointer", background: expandedCatIdx === i ? "#6366f1" : "#fff", color: expandedCatIdx === i ? "#fff" : "#6b7280", borderColor: expandedCatIdx === i ? "#6366f1" : "#e5e7eb" }}>{cat.name}</button>
+                        ))}
+                      </div>
+                      <div style={{ overflowX: "auto" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+                          <thead><tr style={{ background: "#f3f4f6" }}>
+                            <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: "600", color: "#374151" }}>Publisher</th>
+                            <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: "600", color: "#374151" }}>Type</th>
+                            <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: "600", color: "#374151" }}>Monthly Traffic</th>
+                            <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: "600", color: "#374151" }}>Brand Mentioned</th>
+                            <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: "600", color: "#374151" }}>Search Term</th>
+                            <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: "600", color: "#374151" }}>Link</th>
+                          </tr></thead>
+                          <tbody>
+                            {(categoryCoverage.categories[expandedCatIdx]?.searchTerms || []).flatMap(st => st.articles).map((art, i) => (
+                              <tr key={i} style={{ borderBottom: "1px solid #f3f4f6", background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
+                                <td style={{ padding: "10px 12px", color: "#374151", fontWeight: "500" }}>{art.publisher}</td>
+                                <td style={{ padding: "10px 12px" }}><span style={{ padding: "2px 8px", borderRadius: "4px", fontSize: "11px", fontWeight: "600", background: ARTICLE_TYPE_COLORS[art.type] ? ARTICLE_TYPE_COLORS[art.type] + "20" : "#f3f4f6", color: ARTICLE_TYPE_COLORS[art.type] || "#6b7280" }}>{art.type}</span></td>
+                                <td style={{ padding: "10px 12px", color: "#6b7280" }}>{art.monthlyTraffic ? (art.monthlyTraffic >= 1000 ? (art.monthlyTraffic/1000).toFixed(0) + "K" : art.monthlyTraffic) : "—"}</td>
+                                <td style={{ padding: "10px 12px" }}>{art.brandMentioned ? <span style={{ padding: "2px 8px", borderRadius: "4px", fontSize: "11px", fontWeight: "600", background: "#d1fae5", color: "#065f46" }}>✓ Yes</span> : <span style={{ padding: "2px 8px", borderRadius: "4px", fontSize: "11px", fontWeight: "600", background: "#fef3c7", color: "#92400e" }}>Gap</span>}</td>
+                                <td style={{ padding: "10px 12px", color: "#6b7280", fontSize: "12px" }}>{art.searchTerm}</td>
+                                <td style={{ padding: "10px 12px" }}><a href={art.url} target="_blank" rel="noopener noreferrer" style={{ color: "#6366f1" }}><ExternalLink size={12} /></a></td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {!categoryCoverage && !categoryLoading && !categoryError && (
+                  <div style={{ textAlign: "center", padding: "60px 20px", color: "#9ca3af" }}>Click the Category Coverage tab to load data for {activeBrand}</div>
+                )}
+              </div>
+            )}
+
             </div>
           )}
         </div>
