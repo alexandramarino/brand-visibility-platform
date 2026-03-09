@@ -831,7 +831,10 @@ export default function App() {
                           <div key={i} style={{ background: "#fff", borderRadius: "8px", padding: "14px", border: "1px solid #e5e7eb" }}>
                             <div style={{ fontSize: "12px", fontWeight: "700", color: "#6366f1", marginBottom: "8px", textTransform: "uppercase" }}>{cat.name}</div>
                             {cat.searchTerms.map((st, j) => (
-                              <div key={j} style={{ fontSize: "12px", color: "#6b7280", padding: "3px 0", borderBottom: j < cat.searchTerms.length - 1 ? "1px solid #f3f4f6" : "none" }}>• {st.term}</div>
+                              <div key={j} style={{ fontSize: "12px", color: "#6b7280", padding: "3px 0", borderBottom: j < cat.searchTerms.length - 1 ? "1px solid #f3f4f6" : "none", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
+                                <span>• {st.term}</span>
+                                {st.monthlyVolume != null && <span style={{ flexShrink: 0, fontSize: "11px", color: "#6366f1", fontWeight: "600", background: "#e0e7ff", padding: "1px 7px", borderRadius: "10px" }}>{st.monthlyVolume >= 1000 ? (st.monthlyVolume / 1000).toFixed(0) + "K" : st.monthlyVolume}/mo</span>}
+                              </div>
                             ))}
                           </div>
                         ))}
